@@ -4,6 +4,8 @@ import requests
 import os
 import io
 from datetime import datetime
+import folium
+from streamlit_folium import folium_static
 
 def get_lat_long(address, api_key):
     """Get latitude and longitude for an address using Google Maps API"""
@@ -52,6 +54,51 @@ def process_geocoding(df, api_key, progress_bar=None, status_text=None):
             st.warning(f"Error processing row {index + 1}: {str(e)}")
     
     return df, processed_count, error_count
+
+def create_map(df):
+    """Create an interactive map with geocoded locations"""
+    # Filter out rows without coordinates
+    valid_coords = df.dropna(subset=['Latitude', 'Longitude'])
+    valid_coords = valid_coords[(valid_coords['Latitude'] != '') & (valid_coords['Longitude'] != '')]
+    
+    if len(valid_coords) == 0:
+        return None, 0
+    
+    # Convert to numeric
+    valid_coords['Latitude'] = pd.to_numeric(valid_coords['Latitude'], errors='coerce')
+    valid_coords['Longitude'] = pd.to_numeric(valid_coords['Longitude'], errors='coerce')
+    
+    # Remove any remaining invalid coordinates
+    valid_coords = valid_coords.dropna(subset=['Latitude', 'Longitude'])
+    
+    if len(valid_coords) == 0:
+        return None, 0
+    
+    # Calculate map center
+    center_lat = valid_coords['Latitude'].mean()
+    center_lon = valid_coords['Longitude'].mean()
+    
+    # Create map
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=10)
+    
+    # Add markers for each location
+    for idx, row in valid_coords.iterrows():
+        address_info = f"{row['address1']}, {row['city']}, {row['sta']} {row['zip']}"
+        
+        # Create popup content
+        popup_content = f"""
+        <b>Address:</b> {address_info}<br>
+        <b>Latitude:</b> {row['Latitude']}<br>
+        <b>Longitude:</b> {row['Longitude']}
+        """
+        
+        folium.Marker(
+            location=[row['Latitude'], row['Longitude']],
+            popup=folium.Popup(popup_content, max_width=300),
+            tooltip=f"{row['address1']}, {row['city']}"
+        ).add_to(m)
+    
+    return m, len(valid_coords)
 
 def check_access_secret(secret):
     """Check if the provided secret is valid"""
@@ -134,8 +181,18 @@ def main():
                     # Show results
                     st.success(f"✅ Processing complete! Processed {processed} addresses with {errors} errors.")
                     
-                    # Display results
-                    st.subheader("Results")
+                    # Create and display map
+                    st.subheader("📍 Map View")
+                    map_obj, mapped_locations = create_map(result_df)
+                    
+                    if map_obj:
+                        st.info(f"Showing {mapped_locations} locations on map (locations with valid coordinates)")
+                        folium_static(map_obj, width=700, height=500)
+                    else:
+                        st.warning("No valid coordinates found to display on map.")
+                    
+                    # Display results table
+                    st.subheader("📊 Data Table")
                     st.dataframe(result_df)
                     
                     # Download button

@@ -77,3 +77,36 @@ Expected input format:
 - Output adds: `Latitude`, `Longitude` columns
 
 The web app validates input files and provides user-friendly error messages for missing columns or processing failures.
+
+## Deployment
+
+### Streamlit Community Cloud (Recommended)
+
+1. **Push to GitHub**:
+   ```bash
+   git remote add origin https://github.com/yourusername/your-repo-name.git
+   git push -u origin main
+   ```
+
+2. **Deploy on Streamlit Cloud**:
+   - Visit [share.streamlit.io](https://share.streamlit.io)
+   - Sign in with GitHub account
+   - Click "New app"
+   - Select your repository and `streamlit_app.py` as the main file
+   - Configure environment variables in "Advanced settings":
+     - `GOOGLE_MAPS_API_KEY`: Your Google Maps API key
+     - `GEOCODER_SECRET`: Your chosen access password
+
+3. **Security Notes**:
+   - The `.env` file is excluded from git via `.gitignore`
+   - Never commit API keys or secrets to the repository
+   - All sensitive data is configured via Streamlit Cloud's environment variables
+
+### Local Network Deployment
+
+For internal network access:
+```bash
+streamlit run streamlit_app.py --server.address 0.0.0.0
+```
+
+This allows access from other devices on the same network.
